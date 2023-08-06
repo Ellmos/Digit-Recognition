@@ -1,4 +1,4 @@
-#include "costFunctions.h"
+#include "costFunctions.hpp"
 
 using namespace std;
 

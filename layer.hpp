@@ -7,7 +7,8 @@
 #include <math.h>
 #include <random>
 
-#include "activationFunctions.h"
+#include "activationFunctions.hpp"
+#include "library/json.hpp"
 
 class Layer {
 public:
@@ -28,6 +29,9 @@ public:
 
 public:
     Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction);
+
+    nlohmann::json toJson() const;
+
     std::vector<double> CalculateOutputs(std::vector<double> inputs);
     std::vector<double> UpdateGradient(Layer oldLayer, std::vector<double>  oldNodeValues, std::vector<double>  previousOutput);
     void ApplyGradient(double learningRate);

@@ -1,4 +1,4 @@
-#include "dataLoader.h"
+#include "dataLoader.hpp"
 
 using namespace std;
 
@@ -26,7 +26,7 @@ void ReadFiles(DataSet* dataSet, string imagesFilePath, string labelsFilePath, s
     ifstream labelFile(labelsFilePath);
 
     if (!imageFile.is_open() || !labelFile.is_open()) 
-        throw std::runtime_error("Failed to open dataSet files");
+        throw runtime_error("Failed to open dataSet files");
 
     //Checking file integrity and getting headers
     size_t magicNumber = ReadBigInt32(imageFile);

@@ -1,19 +1,19 @@
-#include "activationFunctions.h"
-#include "layer.h"
-#include "neural.h"
-#include "hyperParameters.h"
-#include "data/dataLoader.h"
+#include "activationFunctions.hpp"
+#include "layer.hpp"
+#include "neural.hpp"
+#include "hyperParameters.hpp"
+#include "data/dataLoader.hpp"
 
 #include <chrono>
 
 using namespace std;
 
+
 int main() {
-    size_t layersSize[] = {784, 64, 10};       
-    size_t nbrLayers = sizeof(layersSize) / sizeof(layersSize[0]) - 1;
+    vector<size_t> layersSize = {784, 100, 10};
 
     HyperParameters hyperParameters = HyperParameters();
-    Neural neural = Neural(layersSize, nbrLayers, &hyperParameters);
+    Neural neural = Neural(layersSize, &hyperParameters);
 
 
     cout << "----------------Generating Dataset-------------------\n";
@@ -30,9 +30,10 @@ int main() {
     cout << "Time taken:  " << duration.count() << " seconds" << endl;
 
 
-
+    cout << "------------------Learning-----------------------\n";
     neural.Learn(trainDataSet, testDataSet, hyperParameters);
 
+    neural.ToJson("aller");
 
     cout << "End main\n";
     return 0;

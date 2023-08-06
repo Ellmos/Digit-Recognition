@@ -1,4 +1,4 @@
-#include "hyperParameters.h"
+#include "hyperParameters.hpp"
 
 // Constructor and variables
 HyperParameters::HyperParameters(){
@@ -8,8 +8,8 @@ HyperParameters::HyperParameters(){
         
     initialLearningRate = 0.25;
     learnRateDecay = 0.075;
-    batchSize = 32;
-    epoch = 20;
+    batchSize = 64;
+    epoch = 50;
 }
 
 // Copy Constructor to avoid segfault on destructor when HyperParameters is pass by value

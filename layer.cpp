@@ -1,6 +1,7 @@
-#include "layer.h"
+#include "layer.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction){
     this->nbrNodesIn = nbrNodesIn;
@@ -18,6 +19,13 @@ Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activati
     outputs.assign(nbrNodesOut, 0);
 }
 
+
+json Layer::toJson() const {
+    return {
+        {"weights", weights},
+        {"biases", biases}
+    };
+}
 
 vector<double> Layer::CalculateOutputs(vector<double> inputs){
     for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++){
@@ -52,6 +60,7 @@ vector<double> Layer::UpdateGradient(Layer oldLayer, vector<double> oldNodeValue
             gradientBiases[nodesOut] += newNodeValue;
             for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++)
                 gradientWeights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
+
         }
 
     return newNodeValues;

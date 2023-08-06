@@ -1,20 +1,48 @@
-#include "neural.h"
-#include <cstdlib>
+#include "neural.hpp"
+
 using namespace std;
+using json = nlohmann::json;
 
-Neural::Neural(size_t layerSizes[], size_t nbrLayers, HyperParameters* hyperParameters) {
+
+Neural::Neural(vector<size_t> layerSizes, HyperParameters* hyperParameters) {
     this->layersSize = layerSizes;
-    this->nbrLayers = nbrLayers;
+    this->nbrLayers = layersSize.size() - 1;
     this->costFunction = hyperParameters->costFunction;
-    // this->layers.reserve(nbrLayers);
-
 
     for (size_t i = 0; i < nbrLayers; i++)
         layers.push_back(Layer(layersSize[i], layersSize[i + 1], hyperParameters->activationFunction));
     layers[nbrLayers - 1].activationFunction = hyperParameters->outputActivationFunction;
 }
 
-//---------------------------Back Propagation--------------------------------
+
+
+
+//---------------------------Serialization--------------------------------
+void Neural::ToJson(std::string fileName){
+    ofstream file ("data/saves/" + fileName + ".json");
+    if (!file.is_open())
+        throw runtime_error("Failed to create save file");
+       
+    file << this->Serialize().dump();
+
+    file.close();
+}
+
+json Neural::Serialize() const {
+    nlohmann::json jLayers;
+    for (const auto& layer : layers) {
+        jLayers.push_back(layer.toJson());
+    }
+
+    return {
+        {"nbrLayers", nbrLayers},
+        {"layersSize", layersSize},
+        {"layers", jLayers}
+    };
+}
+
+
+//---------------------------BackPropagation--------------------------------
 vector<double> Neural::CalculateOutputs(vector<double> inputs){
     for (size_t i = 0; i < nbrLayers; i++) {
         inputs = layers[i].CalculateOutputs(inputs);
@@ -40,12 +68,9 @@ void Neural::FeedBatch(Batch batch, size_t batchSize, double learningRate) {
             nodeValues[nodesOut] = currentNodeValue;
 
 
-
+            outputLayer->gradientBiases[nodesOut] += currentNodeValue;
             for (size_t nodesIn = 0; nodesIn < outputLayer->nbrNodesIn; nodesIn++)
                 outputLayer->gradientWeights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
-
-
-
         }
 
         // Go back through the layers, compute the corresponding node values and
@@ -57,10 +82,8 @@ void Neural::FeedBatch(Batch batch, size_t batchSize, double learningRate) {
             nodeValues = currentLayer->UpdateGradient(layers[nbrLayers - i + 1], nodeValues, previousOutputs);
         }
 
-        for (size_t i = 0; i < nbrLayers; i++) {
-            Layer* layer = &layers[i];
-            layer->ApplyGradient(learningRate / batch.batchSize);
-        }
+        for (size_t i = 0; i < nbrLayers; i++)
+            layers[i].ApplyGradient(learningRate / batch.batchSize);
     }
 }
 
@@ -73,7 +96,6 @@ void Neural::Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp
 
     auto rng = default_random_engine{};
 
-    cout << "------------------Learning-----------------------\n";
     for (int currentEpoch = 0; currentEpoch < hp.epoch; currentEpoch++) {
         cout << "--Epoch " << currentEpoch + 1 << " out of " << hp.epoch << "--\n";
         double learningRate = hp.initialLearningRate * (1 / (1 + hp.learnRateDecay * currentEpoch));
@@ -88,13 +110,9 @@ void Neural::Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp
         // Used to visualize progression of dataSet and check overfitting
         accuracyTrain[currentEpoch] = DataSetAccuracy(trainDataSet);
         accuracyTest[currentEpoch] = DataSetAccuracy(testDataSet);
+        cout << "Accuracy on training DataSet: " << accuracyTrain[currentEpoch] << "%\n";
+        cout << "Accuracy on test DataSet: " << accuracyTest[currentEpoch] << "%\n";
     }
-
-
-    cout << "Accuracy on training DataSet: " << accuracyTrain[hp.epoch - 1] << "%\n";
-    cout << "Accuracy on test DataSet: " << accuracyTest[hp.epoch - 1] << "%\n";
-
-    // ToJson("NewSave");
 }
 
 //-----------------Cost---------------
@@ -135,7 +153,6 @@ double Neural::DataSetAccuracy(DataSet dataSet) {
         averageAccuracy += BatchAccuracy(dataSet.batches[i]);
     }
     
-    cout << "Accuracy: " << averageAccuracy / dataSet.nbrBatch << endl;
     return averageAccuracy / dataSet.nbrBatch;
 }
 

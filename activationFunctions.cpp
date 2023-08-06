@@ -1,7 +1,10 @@
-#include "activationFunctions.h"
+#include "activationFunctions.hpp"
+#include <iostream>
 
 using namespace std;
 
+
+//--------------Relu------------
 double Relu::Function(vector<double> inputs, size_t index) {
     return inputs[index] > 0 ? inputs[index] : 0;
 }
@@ -11,7 +14,18 @@ double Relu::Derivative(vector<double> inputs, size_t index) {
 }
 
 
+
+
+//--------------Relu------------
+void Normalize(vector<double> &inputs){
+    double max = *max_element(inputs.begin(), inputs.end());
+    for (size_t i = 0; i < inputs.size(); i++)
+        inputs[i] -= max;
+}
+
 double Softmax::Function(vector<double> inputs, size_t index) {
+    Normalize(inputs);
+
     double expSum = 0;
     for (size_t i = 0; i < inputs.size(); i++) {
         expSum += std::exp(inputs[i]);
@@ -21,6 +35,8 @@ double Softmax::Function(vector<double> inputs, size_t index) {
 }
 
 double Softmax::Derivative(vector<double> inputs, size_t index) {
+    Normalize(inputs);
+
     double expSum = 0;
     for (size_t i = 0; i < inputs.size(); i++) {
         expSum += exp(inputs[i]);

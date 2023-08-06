@@ -3,23 +3,29 @@
 #include <cstdlib>
 #include <algorithm>
 #include <random>
+#include <iostream>
 
-#include "layer.h"
-#include "costFunctions.h"
-#include "hyperParameters.h"
-#include "data/dataLoader.h"
+#include "layer.hpp"
+#include "costFunctions.hpp"
+#include "hyperParameters.hpp"
+#include "data/dataLoader.hpp"
 
 
 class Neural
 {
     public:
         size_t nbrLayers;
-        size_t* layersSize;
+        std::vector<size_t> layersSize;
         std::vector<Layer> layers;
         CostFunction* costFunction;
 
     public:
-        Neural(size_t layerSizes[], size_t nbrLayers, HyperParameters *hyperParameters);
+        Neural(std::vector<size_t> layerSizes, HyperParameters *hyperParameters);
+
+        void ToJson(std::string fileName);
+        nlohmann::json Serialize() const;
+
+        //-----------------BackPropagation---------------
         std::vector<double> CalculateOutputs(std::vector<double> inputs);
         void FeedBatch(Batch batch, size_t batchSize, double learningRate);
         void Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp);
@@ -33,7 +39,6 @@ class Neural
         //-----------------Accuracy---------------
         double BatchAccuracy(Batch batch);
         double DataSetAccuracy(DataSet dataSet);
-
 
         //-----------------Classify---------------
         int Classify(std::vector<double> inputs);

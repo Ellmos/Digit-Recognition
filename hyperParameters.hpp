@@ -1,6 +1,6 @@
 #pragma once
-#include "costFunctions.h"
-#include "activationFunctions.h"
+#include "costFunctions.hpp"
+#include "activationFunctions.hpp"
 #include <cstdio>
 
 class HyperParameters {
