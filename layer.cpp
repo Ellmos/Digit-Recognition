@@ -1,12 +1,25 @@
 #include "layer.hpp"
 
-using namespace std;
-using json = nlohmann::json;
 
+using json = nlohmann::json;
+using namespace std;
+
+
+//---------------------------Serialization--------------------------------
+
+json Layer::toJson() const {
+    return {
+        {"weights", weights},
+        {"biases", biases}
+    };
+}
+
+
+//---------------------------Neural class --------------------------------
 Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction){
     this->nbrNodesIn = nbrNodesIn;
     this->nbrNodesOut = nbrNodesOut;
-    
+
     this->activationFunction = activationFunction;
 
     weights = InitializeWeights(nbrNodesOut, nbrNodesIn);
@@ -17,14 +30,6 @@ Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activati
 
     weightedSum.assign(nbrNodesOut, 0);
     outputs.assign(nbrNodesOut, 0);
-}
-
-
-json Layer::toJson() const {
-    return {
-        {"weights", weights},
-        {"biases", biases}
-    };
 }
 
 vector<double> Layer::CalculateOutputs(vector<double> inputs){
@@ -81,6 +86,7 @@ void Layer::ApplyGradient(double learningRate) {
 
 
 
+//---------------------------Weights Initialization--------------------------------
 //-----------------Weights Initialization------------------//
 double RandomDouble(){
     double lower = 0;

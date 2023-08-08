@@ -81,6 +81,8 @@ def ModifyDataset(images, labels, isTrainDataSet, nbrNewImage):
     # ----------------------------Modification and writing of image in file------------------------------#
     ROTATIONRANGE = 10
     TRANSLATIONRANGE = 4
+
+    printStep = int(nbrNewImage / 10)
     for i in range(nbrNewImage):
         index = i % nbrOriginalImage
         image = images[index].reshape((28, 28))
@@ -103,8 +105,8 @@ def ModifyDataset(images, labels, isTrainDataSet, nbrNewImage):
         imageFile.write(final.tobytes("C"))
         labelFile.write(labels[index].tobytes("C"))
 
-        if i % 1000 == 0:
-            print(i, "/", nbrNewImage)
+        if (i+1) % printStep == 0:
+            print(int((i+1) * 100 / nbrNewImage), "%")
 
     imageFile.close()
     labelFile.close()
@@ -121,8 +123,10 @@ def ModifyMnist(lenTraining, lenTest):
     testImages, testLabels = ReadMnistFiles(test_images_path, test_labels_path)
 
     if lenTraining != 0:
+        print("\nModifying training dataset")
         ModifyDataset(trainingImages, trainingLabels, isTrainDataSet=True, nbrNewImage=lenTraining)
     if lenTest != 0:
+        print("\nModifying test dataset")
         ModifyDataset(testImages, testLabels, isTrainDataSet=False, nbrNewImage=lenTest)
 
     exit()
