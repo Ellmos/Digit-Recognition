@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <random>
 #include <iostream>
+#include <future>
 
 #include "layer.hpp"
 #include "costFunctions.hpp"
@@ -26,28 +27,28 @@ class Neural
         nlohmann::json Serialize() const;
 
         //-----------------Constructor---------------
-        Neural(std::vector<size_t> layerSizes, HyperParameters *hyperParameters);
+        Neural(std::vector<size_t> layerSizes, const HyperParameters& hyperParameters);
 
         //-----------------BackPropagation---------------
         std::vector<double> CalculateOutputs(std::vector<double> inputs);
-        void FeedBatch(Batch batch, size_t batchSize, double learningRate);
-        void Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp);
+        void FeedBatch(const Batch& batch, double learningRate);
+        void Learn(DataSet& trainDataSet, const DataSet& testDataSet, const HyperParameters& hp);
 
         //-----------------Cost---------------
-        double DataPointCost(Data dataPoint);
-        double BatchCost(Batch batch);
-        double DataSetCost(DataSet dataSet);
+        double DataPointCost(const Data& dataPoint);
+        double BatchCost(const Batch& batch);
+        double DataSetCost(const DataSet& dataSet);
 
         //-----------------Accuracy---------------
-        double BatchAccuracy(Batch batch);
-        double DataSetAccuracy(DataSet dataSet);
+        double BatchAccuracy(const Batch& batch);
+        double DataSetAccuracy(const DataSet& dataSet);
 
         //-----------------Classify---------------
-        int Classify(std::vector<double> inputs);
-        int GetMaxIndex(std::vector<double> outputs);
+        int Classify(const std::vector<double>& inputs);
+        int GetMaxIndex(const std::vector<double>& outputs);
 }; 
 
 
 //-----------------Deserialization---------------
-Neural NeuralFromJson(std::string fileName, HyperParameters *hyperParameters);
+Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParameters);
 

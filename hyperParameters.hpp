@@ -1,24 +1,25 @@
 #pragma once
 #include "costFunctions.hpp"
 #include "activationFunctions.hpp"
-#include <cstdio>
+
 
 class HyperParameters {
 public:
-    ActivationFunction* activationFunction;
-    ActivationFunction* outputActivationFunction;
-    CostFunction* costFunction;
+    ActivationFunction* activationFunction = new Relu();
+    ActivationFunction* outputActivationFunction = new Softmax();;
+    CostFunction* costFunction = new CrossEntropy();
 
-    double initialLearningRate;
-    double learnRateDecay;
-    int batchSize;
-    int epoch;
+    double initialLearningRate = 0.25; 
+    double learnRateDecay = 0.075;
+    int batchSize = 64;
+    int epoch = 1;
 
-    HyperParameters();
-
-    // Copy Constructor to avoid segfault on destructor when HyperParameters is pass by value
-    HyperParameters(const HyperParameters& other);
-
-    ~HyperParameters();
+public:
+    HyperParameters(){};
+    ~HyperParameters(){
+        delete activationFunction;
+        delete outputActivationFunction;
+        delete costFunction;
+    }
 };
 

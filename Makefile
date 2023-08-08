@@ -6,7 +6,6 @@ LDFLAGS = -fsanitize=address
 SRC = main.cpp \
 	  neural.cpp \
 	  layer.cpp \
-	  hyperParameters.cpp \
 	  activationFunctions.cpp \
 	  costFunctions.cpp \
 	  data/dataLoader.cpp \

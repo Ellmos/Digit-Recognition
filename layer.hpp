@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdlib>
 #include <cstddef>
-#include <iostream>
+#include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <math.h>
 #include <random>
 
@@ -32,8 +32,8 @@ public:
 
     nlohmann::json toJson() const;
 
-    std::vector<double> CalculateOutputs(std::vector<double> inputs);
-    std::vector<double> UpdateGradient(Layer oldLayer, std::vector<double>  oldNodeValues, std::vector<double>  previousOutput);
+    std::vector<double> CalculateOutputs(const std::vector<double>& inputs);
+    std::vector<double> UpdateGradient(const Layer& oldLayer, const std::vector<double>& oldNodeValues, const std::vector<double>& previousOutput);
     void ApplyGradient(double learningRate);
     std::vector<double>  InitializeWeights(size_t nbrNodesOut, size_t nbrNodesIn);
 };

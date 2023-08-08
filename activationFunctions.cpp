@@ -28,7 +28,7 @@ double Softmax::Function(vector<double> inputs, size_t index) {
 
     double expSum = 0;
     for (size_t i = 0; i < inputs.size(); i++) {
-        expSum += std::exp(inputs[i]);
+        expSum += exp(inputs[i]);
     }
 
     return exp(inputs[index]) / expSum;

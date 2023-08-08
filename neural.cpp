@@ -4,7 +4,6 @@ using namespace std;
 using json = nlohmann::json;
 
 
-
 //---------------------------Serialization--------------------------------
 json Neural::Serialize() const {
     nlohmann::json jLayers;
@@ -31,7 +30,7 @@ void Neural::ToJson(std::string fileName){
 
 
 //-----------------Deserialization---------------
-Neural NeuralFromJson(std::string fileName, HyperParameters *hyperParameters){
+Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParameters){
     //Read File
     string filePath = "data/saves/" + fileName + ".json";
     ifstream file(filePath);
@@ -75,14 +74,14 @@ Neural NeuralFromJson(std::string fileName, HyperParameters *hyperParameters){
 
 //---------------------------Neural class --------------------------------
 
-Neural::Neural(vector<size_t> layerSizes, HyperParameters* hyperParameters) {
+Neural::Neural(vector<size_t> layerSizes, const HyperParameters& hyperParameters) {
     this->layersSize = layerSizes;
     this->nbrLayers = layersSize.size() - 1;
-    this->costFunction = hyperParameters->costFunction;
+    this->costFunction = hyperParameters.costFunction;
 
     for (size_t i = 0; i < nbrLayers; i++)
-        layers.push_back(Layer(layersSize[i], layersSize[i + 1], hyperParameters->activationFunction));
-    layers[nbrLayers - 1].activationFunction = hyperParameters->outputActivationFunction;
+        layers.push_back(Layer(layersSize[i], layersSize[i + 1], hyperParameters.activationFunction));
+    layers[nbrLayers - 1].activationFunction = hyperParameters.outputActivationFunction;
 }
 
 
@@ -95,8 +94,9 @@ vector<double> Neural::CalculateOutputs(vector<double> inputs){
     return inputs;
 }
 
-void Neural::FeedBatch(Batch batch, size_t batchSize, double learningRate) {
-    for (size_t i = 0; i < batchSize; i++) {
+void Neural::FeedBatch(const Batch& batch, double learningRate) {
+
+    for (size_t i = 0; i < batch.batchSize; i++) {
         Data dataPoint = batch.dataPoints[i];
         CalculateOutputs(dataPoint.inputs);
 
@@ -132,7 +132,7 @@ void Neural::FeedBatch(Batch batch, size_t batchSize, double learningRate) {
     }
 }
 
-void Neural::Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp) {
+void Neural::Learn(DataSet& trainDataSet, const DataSet& testDataSet, const HyperParameters& hp) {
     int nbrBatch = trainDataSet.nbrBatch;
     int printBatch = nbrBatch / 10 != 0 ? nbrBatch / 10 : 1;
 
@@ -149,23 +149,27 @@ void Neural::Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp
         for (int i = 0; i < nbrBatch; i++) {
             if (i % printBatch == 0)
                 cout << "Batch " << i << " out of " << nbrBatch << "\n";
-            FeedBatch(trainDataSet.batches[i], trainDataSet.batches[i].batchSize, learningRate);
+            FeedBatch(trainDataSet.batches[i], learningRate);
         }
 
-        // Used to visualize progression of dataSet and check overfitting
-        accuracyTrain[currentEpoch] = DataSetAccuracy(trainDataSet);
-        accuracyTest[currentEpoch] = DataSetAccuracy(testDataSet);
+        cout << "Batch " << nbrBatch << " out of " << nbrBatch << "\n";
+        // Used to visualize progression of dataSet and check overfitting 
+        future<double> trainAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, trainDataSet);
+        future<double> testAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, testDataSet);
+
+        accuracyTrain[currentEpoch] = trainAccuracyFuture.get();
+        accuracyTest[currentEpoch] = testAccuracyFuture.get();
         cout << "Accuracy on training DataSet: " << accuracyTrain[currentEpoch] << "%\n";
-        cout << "Accuracy on test DataSet: " << accuracyTest[currentEpoch] << "%\n";
+        cout << "Accuracy on test DataSet: " << accuracyTest[currentEpoch] << "%\n\n";
     }
 }
 
 //-----------------Cost---------------
-double Neural::DataPointCost(Data dataPoint) {
+double Neural::DataPointCost(const Data& dataPoint) {
     vector<double> outputs = CalculateOutputs(dataPoint.inputs);
     return costFunction->Function(outputs, dataPoint.targets);
 }
-double Neural::BatchCost(Batch batch) {
+double Neural::BatchCost(const Batch& batch) {
     double cost = 0;
     for (size_t i = 0; i < batch.batchSize; i++) {
         cost += DataPointCost(batch.dataPoints[i]);
@@ -173,17 +177,23 @@ double Neural::BatchCost(Batch batch) {
 
     return cost;
 }
-double Neural::DataSetCost(DataSet dataSet) {
-    double cost = 0;
-    for (size_t i = 0; i < dataSet.nbrBatch; i++) {
-        cost += BatchCost(dataSet.batches[i]);
-    }
+double Neural::DataSetCost(const DataSet& dataSet) {
+    vector<future<double>> batchesCost(dataSet.nbrBatch);
 
+    for (size_t i = 0; i < dataSet.nbrBatch; i++){
+        batchesCost[i] = async(launch::async, &Neural::BatchCost, this, dataSet.batches[i]);
+    }
+    
+    double cost = 0;
+    for (size_t i = 0; i < dataSet.nbrBatch; i++){
+        cost += batchesCost[i].get();
+    }
     return cost;
+
 }
 
 //-----------------Accuracy---------------
-double Neural::BatchAccuracy(Batch batch) {
+double Neural::BatchAccuracy(const Batch& batch) {
     double nbrGood = 0;
     for (size_t i = 0; i < batch.batchSize; i++) {
         if (Classify(batch.dataPoints[i].inputs) == GetMaxIndex(batch.dataPoints[i].targets))
@@ -192,21 +202,26 @@ double Neural::BatchAccuracy(Batch batch) {
 
     return nbrGood * 100 / batch.batchSize;
 }
-double Neural::DataSetAccuracy(DataSet dataSet) {
-    double averageAccuracy = 0;
+double Neural::DataSetAccuracy(const DataSet& dataSet) {
+    vector<future<double>> batchesAccuracyValues(dataSet.nbrBatch);
+
     for (size_t i = 0; i < dataSet.nbrBatch; i++) {
-        averageAccuracy += BatchAccuracy(dataSet.batches[i]);
+        batchesAccuracyValues[i] = async(launch::async, &Neural::BatchAccuracy, this, dataSet.batches[i]);
     }
-    
-    return averageAccuracy / dataSet.nbrBatch;
+
+    double totalAccuracy = 0;
+    for (auto& future : batchesAccuracyValues) {
+        totalAccuracy += future.get(); // Retrieve the result from the future
+    }
+    return totalAccuracy / dataSet.nbrBatch;
 }
 
 //-----------------Classify---------------
-int Neural::Classify(vector<double> inputs) {
+int Neural::Classify(const vector<double>& inputs) {
     vector<double> outputs = CalculateOutputs(inputs);
     return GetMaxIndex(outputs);
 }
-int Neural::GetMaxIndex(vector<double> outputs) {
+int Neural::GetMaxIndex(const vector<double>& outputs) {
     double max = outputs[0];
     int index = 0;
     for (size_t i = 1; i < outputs.size(); i++) {
