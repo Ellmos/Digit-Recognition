@@ -1,3 +1,4 @@
+import sys
 from random import randint, random
 import numpy as np
 import cv2
@@ -46,7 +47,7 @@ def ReadMnistFiles(imagesPath, labelsPath):
     return np.array(images, dtype=">u1"), np.array(labels, dtype=">u1")
 
 
-def ModifyDataset(images, labels, isTrainDataSet, iteration=1):
+def ModifyDataset(images, labels, isTrainDataSet, nbrNewImage):
     newDirectory = os.path.dirname(os.path.abspath(__file__)) + '/modifiedMnist/'
     if isTrainDataSet:
         imageFile = open(newDirectory + "train-images.idx3-ubyte", "wb")
@@ -57,7 +58,7 @@ def ModifyDataset(images, labels, isTrainDataSet, iteration=1):
 
 
     # ----------------------------Beginning of the idx files------------------------------#
-    length = len(images)
+    nbrOriginalImage = len(images)
     # Bytes at the beginning of a mnist-like idx files
     # first 4 bytes is magic number
     #   first 2 bytes are 0
@@ -67,49 +68,49 @@ def ModifyDataset(images, labels, isTrainDataSet, iteration=1):
     labelMagicNumber = b"\x00\x00\x08\x03"
 
     # The sizes of each dimension are 4-byte integers (in big endian)
-    nbrNewImages = int(length * iteration).to_bytes(4, "big")
-    _28 = b"\x00\x00\x00\x1c"
+    nbrNewImagesBytes = int(nbrNewImage).to_bytes(4, "big")
+    _28 = int(28).to_bytes(4, "big")
     if isTrainDataSet:
-        labelFile.write(imageMagicNumber + nbrNewImages)
-        imageFile.write(labelMagicNumber + nbrNewImages + _28 + _28)
+        labelFile.write(imageMagicNumber + nbrNewImagesBytes)
+        imageFile.write(labelMagicNumber + nbrNewImagesBytes + _28 + _28)
     else:
-        labelFile.write(imageMagicNumber + nbrNewImages)
-        imageFile.write(labelMagicNumber + nbrNewImages + _28 + _28)
+        labelFile.write(imageMagicNumber + nbrNewImagesBytes)
+        imageFile.write(labelMagicNumber + nbrNewImagesBytes + _28 + _28)
 
 
     # ----------------------------Modification and writing of image in file------------------------------#
-    rotationRange = 10
-    translationRange = 4
-    for j in range(iteration):
-        for i in range(length):
-            image = images[i].reshape((28, 28))
+    ROTATIONRANGE = 10
+    TRANSLATIONRANGE = 4
+    for i in range(nbrNewImage):
+        index = i % nbrOriginalImage
+        image = images[index].reshape((28, 28))
 
-            # Apply random rotation
-            angle = randint(-rotationRange, rotationRange)
-            rotated = RotateImage(image, angle)
+        # Apply random rotation
+        angle = randint(-ROTATIONRANGE, ROTATIONRANGE)
+        rotated = RotateImage(image, angle)
 
-            # Apply random translation
-            xTranslation, yTranslation = randint(-translationRange, translationRange), randint(-translationRange, translationRange)
-            translated = TranslateImage(rotated, xTranslation, yTranslation)
+        # Apply random translation
+        xTranslation, yTranslation = randint(-TRANSLATIONRANGE, TRANSLATIONRANGE), randint(-TRANSLATIONRANGE, TRANSLATIONRANGE)
+        translated = TranslateImage(rotated, xTranslation, yTranslation)
 
-            # Add random noise and clamp values between 0 and 255
-            noise = np.zeros(image.shape, np.uint8)
-            cv2.randn(noise, 0, random()*50)
-            noise = np.maximum(noise, 0)
-            noised = cv2.add(translated, noise)
-            final = np.minimum(noised, 255).reshape(784)
+        # Add random noise and clamp values between 0 and 255
+        noise = np.zeros(image.shape, np.uint8)
+        cv2.randn(noise, 0, random()*50)
+        noise = np.maximum(noise, 0)
+        noised = cv2.add(translated, noise)
+        final = np.minimum(noised, 255).reshape(784)
 
-            imageFile.write(final.tobytes("C"))
-            labelFile.write(labels[i].tobytes("C"))
+        imageFile.write(final.tobytes("C"))
+        labelFile.write(labels[index].tobytes("C"))
 
-            if (i + j*length) % 1000 == 0:
-                print(i + j*length, "/", length*iteration)
+        if i % 1000 == 0:
+            print(i, "/", nbrNewImage)
 
     imageFile.close()
     labelFile.close()
 
 
-def ModifyMnist(iteration):
+def ModifyMnist(lenTraining, lenTest):
     directory = os.path.dirname(os.path.abspath(__file__)) + '/mnist/'
     training_images_path = directory + 'train-images.idx3-ubyte'
     training_labels_path = directory + 'train-labels.idx1-ubyte'
@@ -119,9 +120,35 @@ def ModifyMnist(iteration):
     trainingImages, trainingLabels = ReadMnistFiles(training_images_path, training_labels_path)
     testImages, testLabels = ReadMnistFiles(test_images_path, test_labels_path)
 
-    ModifyDataset(trainingImages, trainingLabels, isTrainDataSet=True, iteration=iteration)
-    ModifyDataset(testImages, testLabels, isTrainDataSet=False, iteration=iteration)
+    if lenTraining != 0:
+        ModifyDataset(trainingImages, trainingLabels, isTrainDataSet=True, nbrNewImage=lenTraining)
+    if lenTest != 0:
+        ModifyDataset(testImages, testLabels, isTrainDataSet=False, nbrNewImage=lenTest)
+
+    exit()
 
 
 if __name__ == "__main__":
-    ModifyMnist(1)
+    args = sys.argv[1:]
+    if len(args) == 0:
+        print("No parameter given using default: 60000 10000\nFor help use --usage as parameter")
+        ModifyMnist(60000, 10000)
+    
+    elif len(args) == 1 and args[0] == "--usage":
+        sys.exit("Needs 2 parameters\nFirst parameter is number of images for training DataSet (use 0 to skip)\nSecond paramater is number of images for test DataSet (use 0 to skip)\nDefault: 60000 10000")
+
+    elif len(args) != 2:
+        sys.exit("Invalid parameter number: needs 2\nFirst parameter is number of images for training DataSet (use 0 to skip)\nSecond paramater is number of images for test DataSet (use 0 to skip)\nDefault: 60000 10000")
+        
+    try:
+        int(args[0])
+        int(args[1])
+    except ValueError:
+        sys.exit("Invalid type: parameters needs to be int")
+
+    nbrImagesTrain = int(args[0])
+    nbrImagesTest = int(args[1])
+    if nbrImagesTrain < 0 or nbrImagesTest < 0:
+        sys.exit("Invalid type: parameters needs to be positive (or 0 to skip)")
+
+    ModifyMnist(nbrImagesTrain, nbrImagesTest)

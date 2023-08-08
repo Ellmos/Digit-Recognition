@@ -10,10 +10,14 @@ using namespace std;
 
 
 int main() {
-    vector<size_t> layersSize = {784, 100, 10};
-
     HyperParameters hyperParameters = HyperParameters();
+
+    // Create a new neural Network
+    vector<size_t> layersSize = {784, 100, 10};
     Neural neural = Neural(layersSize, &hyperParameters);
+
+    // Load an existing one
+    // Neural neural = NeuralFromJson("test", &hyperParameters);
 
 
     cout << "----------------Generating Dataset-------------------\n";
@@ -33,7 +37,7 @@ int main() {
     cout << "------------------Learning-----------------------\n";
     neural.Learn(trainDataSet, testDataSet, hyperParameters);
 
-    neural.ToJson("aller");
+    neural.ToJson("newSave");
 
     cout << "End main\n";
     return 0;

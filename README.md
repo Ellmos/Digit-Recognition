@@ -1,1 +1,1 @@
-# c++
+# Handwritten Digit Recognition

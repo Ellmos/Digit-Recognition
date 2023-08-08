@@ -11,6 +11,7 @@
 #include "data/dataLoader.hpp"
 
 
+
 class Neural
 {
     public:
@@ -20,16 +21,17 @@ class Neural
         CostFunction* costFunction;
 
     public:
-        Neural(std::vector<size_t> layerSizes, HyperParameters *hyperParameters);
-
+        //-----------------Serialization---------------
         void ToJson(std::string fileName);
         nlohmann::json Serialize() const;
+
+        //-----------------Constructor---------------
+        Neural(std::vector<size_t> layerSizes, HyperParameters *hyperParameters);
 
         //-----------------BackPropagation---------------
         std::vector<double> CalculateOutputs(std::vector<double> inputs);
         void FeedBatch(Batch batch, size_t batchSize, double learningRate);
         void Learn(DataSet trainDataSet, DataSet testDataSet, HyperParameters hp);
-
 
         //-----------------Cost---------------
         double DataPointCost(Data dataPoint);
@@ -44,3 +46,8 @@ class Neural
         int Classify(std::vector<double> inputs);
         int GetMaxIndex(std::vector<double> outputs);
 }; 
+
+
+//-----------------Deserialization---------------
+Neural NeuralFromJson(std::string fileName, HyperParameters *hyperParameters);
+

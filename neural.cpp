@@ -4,30 +4,8 @@ using namespace std;
 using json = nlohmann::json;
 
 
-Neural::Neural(vector<size_t> layerSizes, HyperParameters* hyperParameters) {
-    this->layersSize = layerSizes;
-    this->nbrLayers = layersSize.size() - 1;
-    this->costFunction = hyperParameters->costFunction;
-
-    for (size_t i = 0; i < nbrLayers; i++)
-        layers.push_back(Layer(layersSize[i], layersSize[i + 1], hyperParameters->activationFunction));
-    layers[nbrLayers - 1].activationFunction = hyperParameters->outputActivationFunction;
-}
-
-
-
 
 //---------------------------Serialization--------------------------------
-void Neural::ToJson(std::string fileName){
-    ofstream file ("data/saves/" + fileName + ".json");
-    if (!file.is_open())
-        throw runtime_error("Failed to create save file");
-       
-    file << this->Serialize().dump();
-
-    file.close();
-}
-
 json Neural::Serialize() const {
     nlohmann::json jLayers;
     for (const auto& layer : layers) {
@@ -40,6 +18,73 @@ json Neural::Serialize() const {
         {"layers", jLayers}
     };
 }
+
+void Neural::ToJson(std::string fileName){
+    ofstream file ("data/saves/" + fileName + ".json");
+    if (!file.is_open())
+        throw runtime_error("Neural::ToJson: Failed to create save file");
+
+    file << this->Serialize().dump();
+
+    file.close();
+}
+
+
+//-----------------Deserialization---------------
+Neural NeuralFromJson(std::string fileName, HyperParameters *hyperParameters){
+    //Read File
+    string filePath = "data/saves/" + fileName + ".json";
+    ifstream file(filePath);
+    if (!file.is_open()) 
+        throw runtime_error("NeuralFromJson: Failed to open \"" + filePath + "\"");
+
+    std::string jsonString((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Parse JSON
+    json parsedJson;
+    try {
+        parsedJson = json::parse(jsonString);
+    } catch (const json::parse_error& e) {
+        throw runtime_error("NeuralFromJson: Failed to parse JSON file");
+    }
+
+
+
+    // Create neural class
+    size_t nbrLayers = parsedJson["nbrLayers"];
+    vector<size_t> layersSize = vector<size_t>(nbrLayers+1);
+    for (size_t i = 0; i <= nbrLayers; i++) {
+        layersSize[i] = parsedJson["layersSize"][i];
+    }
+
+    Neural neural = Neural(layersSize, hyperParameters);
+    for (size_t i = 0; i < neural.nbrLayers; i++) {
+        vector<double> tmp = parsedJson["layers"][i]["weights"];
+        vector<double> tmp2 = parsedJson["layers"][i]["biases"];
+
+        neural.layers[i].weights = tmp;
+        neural.layers[i].biases = tmp2;
+    }
+
+    file.close();
+    return neural;
+}
+
+
+
+
+//---------------------------Neural class --------------------------------
+
+Neural::Neural(vector<size_t> layerSizes, HyperParameters* hyperParameters) {
+    this->layersSize = layerSizes;
+    this->nbrLayers = layersSize.size() - 1;
+    this->costFunction = hyperParameters->costFunction;
+
+    for (size_t i = 0; i < nbrLayers; i++)
+        layers.push_back(Layer(layersSize[i], layersSize[i + 1], hyperParameters->activationFunction));
+    layers[nbrLayers - 1].activationFunction = hyperParameters->outputActivationFunction;
+}
+
 
 
 //---------------------------BackPropagation--------------------------------
