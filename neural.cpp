@@ -1,4 +1,5 @@
 #include "neural.hpp"
+#include <future>
 
 using namespace std;
 using json = nlohmann::json;
@@ -30,8 +31,8 @@ void Neural::ToJson(std::string fileName){
 
 
 //-----------------Deserialization---------------
-Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParameters){
-    //Read File
+Neural NeuralFromJson(std::string fileName, HyperParameters& hyperParameters){
+    // Read File
     string filePath = "data/saves/" + fileName + ".json";
     ifstream file(filePath);
     if (!file.is_open()) 
@@ -47,22 +48,21 @@ Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParamete
         throw runtime_error("NeuralFromJson: Failed to parse JSON file");
     }
 
-
-
     // Create neural class
     size_t nbrLayers = parsedJson["nbrLayers"];
     vector<size_t> layersSize = vector<size_t>(nbrLayers+1);
     for (size_t i = 0; i <= nbrLayers; i++) {
         layersSize[i] = parsedJson["layersSize"][i];
     }
+    hyperParameters.layersSize = layersSize;
 
-    Neural neural = Neural(layersSize, hyperParameters);
+    Neural neural = Neural(hyperParameters);
     for (size_t i = 0; i < neural.nbrLayers; i++) {
-        vector<double> tmp = parsedJson["layers"][i]["weights"];
-        vector<double> tmp2 = parsedJson["layers"][i]["biases"];
+        vector<double> weights = parsedJson["layers"][i]["weights"];
+        vector<double> biases = parsedJson["layers"][i]["biases"];
 
-        neural.layers[i].weights = tmp;
-        neural.layers[i].biases = tmp2;
+        neural.layers[i].weights = weights;
+        neural.layers[i].biases = biases;
     }
 
     file.close();
@@ -74,8 +74,8 @@ Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParamete
 
 //---------------------------Neural class --------------------------------
 
-Neural::Neural(vector<size_t> layerSizes, const HyperParameters& hyperParameters) {
-    this->layersSize = layerSizes;
+Neural::Neural(HyperParameters& hyperParameters) {
+    this->layersSize = hyperParameters.layersSize;
     this->nbrLayers = layersSize.size() - 1;
     this->costFunction = hyperParameters.costFunction;
 
@@ -87,20 +87,79 @@ Neural::Neural(vector<size_t> layerSizes, const HyperParameters& hyperParameters
 
 
 //---------------------------BackPropagation--------------------------------
-vector<double> Neural::CalculateOutputs(vector<double> inputs){
-    for (size_t i = 0; i < nbrLayers; i++) {
-        inputs = layers[i].CalculateOutputs(inputs);
+void Neural::Learn(DataSet& trainDataSet, DataSet& testDataSet, HyperParameters& hp) {
+    int nbrBatch = trainDataSet.nbrBatch;
+    int printBatch = nbrBatch / 10 != 0 ? nbrBatch / 10 : 1;
+
+    vector<double> accuracyTrain(hp.epoch);
+    vector<double> accuracyTest(hp.epoch);
+
+    auto rng = default_random_engine{};
+
+    for (int currentEpoch = 0; currentEpoch < hp.epoch; currentEpoch++) {
+
+        cout << "--Epoch " << currentEpoch + 1 << " out of " << hp.epoch << "--\n";
+
+        // Shuffle DataSet to improve learning
+        shuffle(begin(trainDataSet.batches), end(trainDataSet.batches), rng);
+
+        //-----------------------Single Thread------------------------
+        // for (int i = 0; i < nbrBatch; i++) {
+        //     FeedBatch(trainDataSet.batches[i], hp.layersSize, learningRate);
+        //     if (i % printBatch == 0)
+        //         cout << "Batch " << i << " out of " << nbrBatch << "\n";
+        //
+        // }
+
+        //-----------------------Multi Thread------------------------
+        vector<future<BatchGradient>> futureBatchGradient(nbrBatch);
+        for (int i = 0; i < nbrBatch; i++) {
+            futureBatchGradient[i] = async(launch::async, &Neural::FeedBatch, this, trainDataSet.batches[i], hp.layersSize);
+            if ((i+1) % printBatch == 0)
+                cout << "Batch " << (i+1) << " out of " << nbrBatch << "\n";
+        }
+
+        vector<BatchGradient> batchGradients(nbrBatch);
+        for (int i = 0; i < nbrBatch; i++) {
+            batchGradients[i] = futureBatchGradient[i].get();
+        }
+
+        for(size_t i = 0; i < batchGradients[1].layersGradient[1].nbrNodesIn; i++){
+            cout << batchGradients[1].layersGradient[1].weights[i] << endl;
+        }
+        double learningRate = hp.initialLearningRate * (1 / (1 + hp.learnRateDecay * currentEpoch));
+        for (int i = 0; i < nbrBatch; i++) {
+            ApplyBatchGradient(batchGradients[i], hp.batchSize, learningRate);
+        }
+
+        cout << endl;
+
+
+        //-----------Accuracy--------------
+
+        // Used to visualize progression of dataSet and check overfitting 
+        future<double> trainAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, trainDataSet);
+        future<double> testAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, testDataSet);
+
+        accuracyTrain[currentEpoch] = trainAccuracyFuture.get();
+        accuracyTest[currentEpoch] = testAccuracyFuture.get();
+        cout << "Accuracy on training DataSet: " << accuracyTrain[currentEpoch] << "%\n";
+        cout << "Accuracy on test DataSet: " << accuracyTest[currentEpoch] << "%\n\n";
     }
-    return inputs;
 }
 
-void Neural::FeedBatch(const Batch& batch, double learningRate) {
 
-    for (size_t i = 0; i < batch.batchSize; i++) {
+
+
+
+BatchGradient Neural::FeedBatch(const Batch& batch, const vector<size_t>& layersSize) {
+    BatchGradient batchGradient = BatchGradient(layersSize);
+    for (size_t i = 0; i < batch.batchSize; i++){
         Data dataPoint = batch.dataPoints[i];
         CalculateOutputs(dataPoint.inputs);
 
         Layer* outputLayer = &layers[nbrLayers - 1];
+        LayerGradient* outputLayerGradient = &batchGradient.layersGradient[nbrLayers - 1];
         vector<double> previousOutputs = nbrLayers >= 2 ? layers[nbrLayers - 2].outputs : dataPoint.inputs;
 
         // Compute the nodes values of the output layer and update its gradients
@@ -113,55 +172,52 @@ void Neural::FeedBatch(const Batch& batch, double learningRate) {
             nodeValues[nodesOut] = currentNodeValue;
 
 
-            outputLayer->gradientBiases[nodesOut] += currentNodeValue;
-            for (size_t nodesIn = 0; nodesIn < outputLayer->nbrNodesIn; nodesIn++)
-                outputLayer->gradientWeights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
+            // outputLayer->gradientBiases[nodesOut] += currentNodeValue;
+            outputLayerGradient->biases[nodesOut] += currentNodeValue;
+            for (size_t nodesIn = 0; nodesIn < outputLayer->nbrNodesIn; nodesIn++){
+                // outputLayer->gradientWeights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
+                outputLayerGradient->weights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
+                if (outputLayerGradient->biases[nodesOut] < 100000){
+                    // cout << i << endl;
+                }
+            }
         }
 
-        // Go back through the layers, compute the corresponding node values and
-        // update the gradient at the same time
-        for (size_t i = 2; i < nbrLayers + 1; i++) {
-            previousOutputs = i < nbrLayers ? layers[nbrLayers - i - 1].outputs : dataPoint.inputs;
-            Layer* currentLayer = &layers[nbrLayers - i];
+
+
+        // Go back through the layers, compute the corresponding node values and update the gradient at the same time
+        for (size_t j = nbrLayers-2; j <= nbrLayers-2; j--) {
+            previousOutputs = j > 0 ? layers[j - 1].outputs : dataPoint.inputs;
+            Layer* currentLayer = &layers[j];
+            LayerGradient* layerGradient = &batchGradient.layersGradient[j];
            
-            nodeValues = currentLayer->UpdateGradient(layers[nbrLayers - i + 1], nodeValues, previousOutputs);
+            nodeValues = currentLayer->UpdateGradient(layers[j + 1], nodeValues, previousOutputs, layerGradient);
         }
 
-        for (size_t i = 0; i < nbrLayers; i++)
-            layers[i].ApplyGradient(learningRate / batch.batchSize);
+        // for (size_t i = 0; i < nbrLayers; i++)
+        //     layers[i].ApplyGradient(learningRate / batch.batchSize);
+    }
+
+    return batchGradient;
+}
+
+
+
+
+
+void Neural::ApplyBatchGradient(BatchGradient batchGradient, size_t batchSize, double learningRate) {
+    for (size_t i = 0; i < nbrLayers; i++){
+        layers[i].ApplyGradient(batchGradient.layersGradient[i], batchSize, learningRate);
     }
 }
 
-void Neural::Learn(DataSet& trainDataSet, const DataSet& testDataSet, const HyperParameters& hp) {
-    int nbrBatch = trainDataSet.nbrBatch;
-    int printBatch = nbrBatch / 10 != 0 ? nbrBatch / 10 : 1;
 
-    vector<double> accuracyTrain(hp.epoch);
-    vector<double> accuracyTest(hp.epoch);
 
-    auto rng = default_random_engine{};
-
-    for (int currentEpoch = 0; currentEpoch < hp.epoch; currentEpoch++) {
-        cout << "--Epoch " << currentEpoch + 1 << " out of " << hp.epoch << "--\n";
-        double learningRate = hp.initialLearningRate * (1 / (1 + hp.learnRateDecay * currentEpoch));
-
-        shuffle(begin(trainDataSet.batches), end(trainDataSet.batches), rng);
-        for (int i = 0; i < nbrBatch; i++) {
-            if (i % printBatch == 0)
-                cout << "Batch " << i << " out of " << nbrBatch << "\n";
-            FeedBatch(trainDataSet.batches[i], learningRate);
-        }
-
-        cout << "Batch " << nbrBatch << " out of " << nbrBatch << "\n";
-        // Used to visualize progression of dataSet and check overfitting 
-        future<double> trainAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, trainDataSet);
-        future<double> testAccuracyFuture = async(launch::async, &Neural::DataSetAccuracy, this, testDataSet);
-
-        accuracyTrain[currentEpoch] = trainAccuracyFuture.get();
-        accuracyTest[currentEpoch] = testAccuracyFuture.get();
-        cout << "Accuracy on training DataSet: " << accuracyTrain[currentEpoch] << "%\n";
-        cout << "Accuracy on test DataSet: " << accuracyTest[currentEpoch] << "%\n\n";
+vector<double> Neural::CalculateOutputs(vector<double> inputs){
+    for (size_t i = 0; i < nbrLayers; i++) {
+        inputs = layers[i].CalculateOutputs(inputs);
     }
+    return inputs;
 }
 
 //-----------------Cost---------------

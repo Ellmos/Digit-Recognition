@@ -13,11 +13,10 @@ int main() {
     HyperParameters hyperParameters = HyperParameters();
 
     // Create a new neural Network
-    vector<size_t> layersSize = {784, 100, 10};
-    Neural neural = Neural(layersSize, hyperParameters);
+    Neural neural = Neural(hyperParameters);
 
-    // Load an existing one
-    // Neural neural = NeuralFromJson("test", hyperParameters);
+    // Load a save
+    // Neural neural = NeuralFromJson("aller", hyperParameters);
 
 
     cout << "----------------Generating Dataset-------------------\n";

@@ -9,31 +9,42 @@
 
 #include "activationFunctions.hpp"
 #include "library/json.hpp"
+#include "data/data.hpp"
 
-class Layer {
-public:
-    size_t nbrNodesIn;
-    size_t nbrNodesOut;
+class Layer 
+{
+    public:
+        size_t nbrNodesIn;
+        size_t nbrNodesOut;
 
-    std::vector<double> weights;
-    std::vector<double> biases;
+        std::vector<double> weights;
+        std::vector<double> biases;
 
-    std::vector<double> gradientWeights;
-    std::vector<double> gradientBiases;
+        std::vector<double> gradientWeights;
+        std::vector<double> gradientBiases;
 
-    std::vector<double> weightedSum;
-    std::vector<double> outputs;
+        std::vector<double> weightedSum;
+        std::vector<double> outputs;
 
-    ActivationFunction* activationFunction;
+        ActivationFunction* activationFunction;
 
 
-public:
-    Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction);
+    public:
+        //-----------------Constructor-------------------
+        Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction);
 
-    nlohmann::json toJson() const;
+        //-----------------Serialization-------------------
+        nlohmann::json toJson() const;
 
-    std::vector<double> CalculateOutputs(const std::vector<double>& inputs);
-    std::vector<double> UpdateGradient(const Layer& oldLayer, const std::vector<double>& oldNodeValues, const std::vector<double>& previousOutput);
-    void ApplyGradient(double learningRate);
-    std::vector<double>  InitializeWeights(size_t nbrNodesOut, size_t nbrNodesIn);
+        //-----------------Forward Pass-------------------
+        std::vector<double> CalculateOutputs(std::vector<double>& inputs);
+
+        //-----------------Backward Pass-------------------
+        std::vector<double> UpdateGradient(Layer &oldLayer, std::vector<double> &oldNodeValues, 
+                                           std::vector<double>& previousOutput, LayerGradient* layerGradient);
+        void ApplyGradient(LayerGradient layerGradient, size_t batchSize, double learningRate);
+
+        //-----------------Weights Initialization-------------------
+        std::vector<double>  InitializeWeights(size_t nbrNodesOut, size_t nbrNodesIn);
 };
+

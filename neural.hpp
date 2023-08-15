@@ -13,6 +13,8 @@
 
 
 
+
+//-----------------Neural Class---------------
 class Neural
 {
     public:
@@ -27,12 +29,13 @@ class Neural
         nlohmann::json Serialize() const;
 
         //-----------------Constructor---------------
-        Neural(std::vector<size_t> layerSizes, const HyperParameters& hyperParameters);
+        Neural(HyperParameters& hyperParameters);
 
         //-----------------BackPropagation---------------
+        void Learn(DataSet& trainDataSet, DataSet& testDataSet, HyperParameters& hp);
+        BatchGradient FeedBatch(const Batch& batch, const std::vector<size_t>& layersSize);
+        void ApplyBatchGradient(BatchGradient batchGradient, size_t batchSize, double learningRate);
         std::vector<double> CalculateOutputs(std::vector<double> inputs);
-        void FeedBatch(const Batch& batch, double learningRate);
-        void Learn(DataSet& trainDataSet, const DataSet& testDataSet, const HyperParameters& hp);
 
         //-----------------Cost---------------
         double DataPointCost(const Data& dataPoint);
@@ -50,5 +53,7 @@ class Neural
 
 
 //-----------------Deserialization---------------
-Neural NeuralFromJson(std::string fileName, const HyperParameters& hyperParameters);
+Neural NeuralFromJson(std::string fileName, HyperParameters& hyperParameters);
+
+
 

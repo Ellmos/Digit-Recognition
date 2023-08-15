@@ -9,7 +9,6 @@ SRC = main.cpp \
 	  activationFunctions.cpp \
 	  costFunctions.cpp \
 	  data/dataLoader.cpp \
-	  data/data.cpp 
 
 OBJ = $(SRC:.cpp=.o)
 DEP = $(SRC:.cpp=.d)

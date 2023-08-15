@@ -9,10 +9,12 @@ public:
     ActivationFunction* outputActivationFunction = new Softmax();;
     CostFunction* costFunction = new CrossEntropy();
 
+
+    std::vector<size_t> layersSize = {784, 16, 10};
     double initialLearningRate = 0.25; 
     double learnRateDecay = 0.075;
-    int batchSize = 64;
-    int epoch = 1;
+    int batchSize = 10000;
+    int epoch = 5;
 
 public:
     HyperParameters(){};

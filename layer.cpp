@@ -14,8 +14,7 @@ json Layer::toJson() const {
     };
 }
 
-
-//---------------------------Neural class --------------------------------
+//---------------------------Constructor--------------------------------
 Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activationFunction){
     this->nbrNodesIn = nbrNodesIn;
     this->nbrNodesOut = nbrNodesOut;
@@ -32,7 +31,10 @@ Layer::Layer(size_t nbrNodesIn, size_t nbrNodesOut, ActivationFunction* activati
     outputs.assign(nbrNodesOut, 0);
 }
 
-vector<double> Layer::CalculateOutputs(const vector<double>& inputs){
+
+
+//---------------------------Forward Pass--------------------------------
+vector<double> Layer::CalculateOutputs(vector<double>& inputs){
     for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++){
         double iOutput = biases[nodesOut];
         for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++){
@@ -50,34 +52,38 @@ vector<double> Layer::CalculateOutputs(const vector<double>& inputs){
 }
 
 
-vector<double> Layer::UpdateGradient(const Layer &oldLayer, const vector<double> &oldNodeValues, const vector<double> &previousOutput){
+//---------------------------Backward Pass--------------------------------
+vector<double> Layer::UpdateGradient(Layer &oldLayer, vector<double> &oldNodeValues, 
+                                     vector<double> &previousOutput, LayerGradient* layerGradient) {
+
     vector<double> newNodeValues(nbrNodesOut, 0);
 
-    for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++)
-        {
-            double newNodeValue = 0;
-            for (size_t oldNodesOut = 0; oldNodesOut < oldLayer.nbrNodesOut; oldNodesOut++)
-                newNodeValue += oldLayer.weights[oldNodesOut * oldLayer.nbrNodesIn + nodesOut] * oldNodeValues[oldNodesOut];
+    for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++) {
+        double newNodeValue = 0;
+        for (size_t oldNodesOut = 0; oldNodesOut < oldLayer.nbrNodesOut; oldNodesOut++)
+            newNodeValue += oldLayer.weights[oldNodesOut * oldLayer.nbrNodesIn + nodesOut] * oldNodeValues[oldNodesOut];
 
-            newNodeValue *= activationFunction->Derivative(weightedSum, nodesOut);
-            newNodeValues[nodesOut] = newNodeValue;
+        newNodeValue *= activationFunction->Derivative(weightedSum, nodesOut);
+        newNodeValues[nodesOut] = newNodeValue;
 
-            gradientBiases[nodesOut] += newNodeValue;
-            for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++)
-                gradientWeights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
-
+        // gradientBiases[nodesOut] += newNodeValue;
+        layerGradient->biases[nodesOut] += newNodeValue;
+        for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++){
+            // gradientWeights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
+            layerGradient->weights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
         }
+
+    }
 
     return newNodeValues;
 }
 
-
-void Layer::ApplyGradient(double learningRate) {
+void Layer::ApplyGradient(LayerGradient layerGradient, size_t batchSize, double learningRate) {
     for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++){
         for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++)
-            weights[nodesOut * nbrNodesIn + nodesIn] -= gradientWeights[nodesOut * nbrNodesIn + nodesIn] * learningRate;
+            weights[nodesOut * nbrNodesIn + nodesIn] -= layerGradient.weights[nodesOut * nbrNodesIn + nodesIn] / batchSize * learningRate;
 
-        biases[nodesOut] -= gradientBiases[nodesOut] * learningRate;
+        biases[nodesOut] -= layerGradient.biases[nodesOut] / batchSize * learningRate;
     }
     
     gradientWeights.assign(nbrNodesOut * nbrNodesIn, 0);
@@ -87,7 +93,6 @@ void Layer::ApplyGradient(double learningRate) {
 
 
 //---------------------------Weights Initialization--------------------------------
-//-----------------Weights Initialization------------------//
 double RandomDouble(){
     double lower = 0;
     double upper = 1;
