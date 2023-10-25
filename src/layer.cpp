@@ -1,4 +1,7 @@
 #include "layer.hpp"
+#include <chrono>
+#include <random>
+#include <thread>
 
 
 using json = nlohmann::json;
@@ -56,6 +59,7 @@ vector<double> Layer::CalculateOutputs(vector<double>& inputs){
 vector<double> Layer::UpdateGradient(Layer &oldLayer, vector<double> &oldNodeValues, 
                                      vector<double> &previousOutput, LayerGradient* layerGradient) {
 
+    // cout << "(-------------------------------------)\n";
     vector<double> newNodeValues(nbrNodesOut, 0);
 
     for (size_t nodesOut = 0; nodesOut < nbrNodesOut; nodesOut++) {
@@ -68,6 +72,8 @@ vector<double> Layer::UpdateGradient(Layer &oldLayer, vector<double> &oldNodeVal
 
         // gradientBiases[nodesOut] += newNodeValue;
         layerGradient->biases[nodesOut] += newNodeValue;
+        // cout << newNodeValue << endl;
+        // this_thread::sleep_for(chrono::milliseconds(200));
         for (size_t nodesIn = 0; nodesIn < nbrNodesIn; nodesIn++){
             // gradientWeights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
             layerGradient->weights[nodesOut * nbrNodesIn + nodesIn] += previousOutput[nodesIn] * newNodeValue;
@@ -93,28 +99,11 @@ void Layer::ApplyGradient(LayerGradient layerGradient, size_t batchSize, double 
 
 
 //---------------------------Weights Initialization--------------------------------
-double RandomDouble(){
-    double lower = 0;
-    double upper = 1;
-
-    default_random_engine rnd{random_device{}()};
-    uniform_real_distribution<double> dist(lower, upper);
-
-    return dist(rnd);
-}
+std::default_random_engine rnd{std::random_device{}()};
 
 double RandomNormalDistribution(double mean, double standardDeviation){
-    double lower = 0;
-    double upper = 1;
-
-    default_random_engine rnd{random_device{}()};
-    uniform_real_distribution<double> dist(lower, upper);
-
-    double x1 = 1 - dist(rnd);
-    double x2 = 1 - dist(rnd);
-
-    double y1 = sqrt(-2.0 * log(x1)) * cos(2.0 * M_PI * x2);
-    return y1 * standardDeviation + mean;
+    std::normal_distribution<double> dist(mean, standardDeviation);
+    return dist(rnd);
 }
 
 

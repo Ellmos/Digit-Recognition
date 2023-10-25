@@ -1,10 +1,12 @@
+#include <chrono>
+#include <iterator>
+
 #include "activationFunctions.hpp"
+#include "dataLoader.hpp"
+#include "hyperParameters.hpp"
 #include "layer.hpp"
 #include "neural.hpp"
-#include "hyperParameters.hpp"
-#include "dataLoader.hpp"
 
-#include <chrono>
 
 using namespace std;
 
@@ -25,7 +27,7 @@ int main() {
     DataSet trainDataSet = DataSet(0);
     DataSet testDataSet = DataSet(0);
 
-    // first int is proportion of mnist and second is proportion of modMnist
+    // first int is proportion of mnist and second is proportion of modifiedMnist
     LoadDataSets(&trainDataSet, &testDataSet, hyperParameters.batchSize, 0, 100);
 
     auto end_time = chrono::high_resolution_clock::now();
@@ -33,9 +35,19 @@ int main() {
     cout << "Time taken: " << duration.count() << " seconds" << endl;
 
 
+    // Data oui = trainDataSet.batches[0].dataPoints[0];
+    // vector<Data> vec;
+    // vec.push_back(oui);
+    // Batch batch = Batch(vec);
+    // // neural.FeedBatch(batch, hyperParameters.layersSize);
+    //
+    // DataSet dataSet = DataSet(1, 1);
+    // dataSet.batches[0] = batch;
+    // neural.Learn(dataSet, dataSet, hyperParameters);
+    // exit(0);
 
 
-    cout << "------------------Testing-----------------------\n";
+
     start_time = chrono::high_resolution_clock::now();
 
     neural.Learn(trainDataSet, testDataSet, hyperParameters);

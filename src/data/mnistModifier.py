@@ -49,6 +49,8 @@ def ReadMnistFiles(imagesPath, labelsPath):
 
 def ModifyDataset(images, labels, isTrainDataSet, nbrNewImage):
     newDirectory = os.path.dirname(os.path.abspath(__file__)) + '/modifiedMnist/'
+    if not os.path.isdir(newDirectory):
+        os.mkdir(newDirectory)
     if isTrainDataSet:
         imageFile = open(newDirectory + "train-images.idx3-ubyte", "wb")
         labelFile = open(newDirectory + "train-labels.idx1-ubyte", "wb")
@@ -128,8 +130,6 @@ def ModifyMnist(lenTraining, lenTest):
     if lenTest != 0:
         print("\nModifying test dataset")
         ModifyDataset(testImages, testLabels, isTrainDataSet=False, nbrNewImage=lenTest)
-
-    exit()
 
 
 if __name__ == "__main__":

@@ -1,8 +1,12 @@
 .vscode
+.cache
+
+compile_commands.json
 
 *.o
 *.d
+digit_recognition
 main
 
-data/modifiedMnist/*
-data/mnist/*
+src/data/modifiedMnist/*
+src/data/mnist/*

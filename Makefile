@@ -21,7 +21,7 @@ run: main
 	./$(BIN)
 
 main: $(OBJ)
-	$(CXX) $(LDFLAGS) -o $(BIN) $^
+	$(CXX) $(LDFLAGS) -o $(BIN) $^ $(LDLIBS)
 
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<

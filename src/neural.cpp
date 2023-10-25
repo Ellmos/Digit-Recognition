@@ -1,4 +1,7 @@
 #include "neural.hpp"
+
+#include <cstdlib>
+#include <filesystem>
 #include <future>
 
 using namespace std;
@@ -20,7 +23,8 @@ json Neural::Serialize() const {
 }
 
 void Neural::ToJson(std::string fileName){
-    ofstream file ("data/saves/" + fileName + ".json");
+    filesystem::path path = filesystem::current_path();
+    ofstream file (path.string() + "/src/data/saves/" + fileName + ".json");
     if (!file.is_open())
         throw runtime_error("Neural::ToJson: Failed to create save file");
 
@@ -33,7 +37,8 @@ void Neural::ToJson(std::string fileName){
 //-----------------Deserialization---------------
 Neural NeuralFromJson(std::string fileName, HyperParameters& hyperParameters){
     // Read File
-    string filePath = "data/saves/" + fileName + ".json";
+    filesystem::path path = filesystem::current_path();
+    string filePath = path.string() + "/src/data/saves/" + fileName + ".json";
     ifstream file(filePath);
     if (!file.is_open()) 
         throw runtime_error("NeuralFromJson: Failed to open \"" + filePath + "\"");
@@ -112,28 +117,30 @@ void Neural::Learn(DataSet& trainDataSet, DataSet& testDataSet, HyperParameters&
         // }
 
         //-----------------------Multi Thread------------------------
+        // Run every batches on a different thread
         vector<future<BatchGradient>> futureBatchGradient(nbrBatch);
         for (int i = 0; i < nbrBatch; i++) {
             futureBatchGradient[i] = async(launch::async, &Neural::FeedBatch, this, trainDataSet.batches[i], hp.layersSize);
             if ((i+1) % printBatch == 0)
-                cout << "Batch " << (i+1) << " out of " << nbrBatch << "\n";
+                cout << "Launching async batch " << (i+1) << " out of " << nbrBatch << "\n";
         }
 
+        // Wait for every threads to finish
         vector<BatchGradient> batchGradients(nbrBatch);
         for (int i = 0; i < nbrBatch; i++) {
             batchGradients[i] = futureBatchGradient[i].get();
         }
 
-        for(size_t i = 0; i < batchGradients[1].layersGradient[1].nbrNodesIn; i++){
-            cout << batchGradients[1].layersGradient[1].weights[i] << endl;
-        }
+        // cout << batchGradients[0].layersGradient[0].nbrNodesIn << endl << endl;
+        // for (size_t i = 0; i < batchGradients[0].layersGradient[0].nbrNodesIn; i++){
+        //     cout << batchGradients[0].layersGradient[0].weights[i] << endl;
+        // }
+
+        // Apply gradient of every batches
         double learningRate = hp.initialLearningRate * (1 / (1 + hp.learnRateDecay * currentEpoch));
         for (int i = 0; i < nbrBatch; i++) {
             ApplyBatchGradient(batchGradients[i], hp.batchSize, learningRate);
         }
-
-        cout << endl;
-
 
         //-----------Accuracy--------------
 
@@ -177,11 +184,9 @@ BatchGradient Neural::FeedBatch(const Batch& batch, const vector<size_t>& layers
             for (size_t nodesIn = 0; nodesIn < outputLayer->nbrNodesIn; nodesIn++){
                 // outputLayer->gradientWeights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
                 outputLayerGradient->weights[nodesOut * outputLayer->nbrNodesIn + nodesIn] += previousOutputs[nodesIn] * currentNodeValue;
-                if (outputLayerGradient->biases[nodesOut] < 100000){
-                    // cout << i << endl;
-                }
             }
         }
+        // exit(0);
 
 
 
@@ -190,14 +195,18 @@ BatchGradient Neural::FeedBatch(const Batch& batch, const vector<size_t>& layers
             previousOutputs = j > 0 ? layers[j - 1].outputs : dataPoint.inputs;
             Layer* currentLayer = &layers[j];
             LayerGradient* layerGradient = &batchGradient.layersGradient[j];
-           
+
             nodeValues = currentLayer->UpdateGradient(layers[j + 1], nodeValues, previousOutputs, layerGradient);
         }
 
         // for (size_t i = 0; i < nbrLayers; i++)
         //     layers[i].ApplyGradient(learningRate / batch.batchSize);
     }
+    for (size_t i = 0; i < batchGradient.layersGradient[nbrLayers - 1].nbrNodesIn; i++) {
+        cout << batchGradient.layersGradient[nbrLayers - 1].weights[i] << endl;
+    }
 
+    // cout << "end batch" << endl;
     return batchGradient;
 }
 

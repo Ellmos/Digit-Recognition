@@ -1,6 +1,7 @@
 #pragma once
-#include "costFunctions.hpp"
+
 #include "activationFunctions.hpp"
+#include "costFunctions.hpp"
 
 
 class HyperParameters {
@@ -11,10 +12,10 @@ public:
 
 
     std::vector<size_t> layersSize = {784, 16, 10};
-    double initialLearningRate = 0.25; 
+    double initialLearningRate = 0.025; 
     double learnRateDecay = 0.075;
-    int batchSize = 10000;
-    int epoch = 5;
+    int batchSize = 1000;
+    int epoch = 1;
 
 public:
     HyperParameters(){};

@@ -1,12 +1,11 @@
+#include <iostream>
+#include <filesystem>
+
 #include "dataLoader.hpp"
 
 using namespace std;
 
-
-
 //-------------------DataLoader-----------------
-using namespace std;
-
 size_t ReadBigInt32(ifstream &file){
     size_t number;
     file.read((char *)&number, 4);
@@ -26,13 +25,13 @@ void ReadFiles(DataSet* dataSet, string imagesFilePath, string labelsFilePath, s
     ifstream labelFile(labelsFilePath);
 
     if (!imageFile.is_open() || !labelFile.is_open()) 
-        throw runtime_error("Failed to open dataSet files");
+        throw runtime_error("ReadFiles: Failed to open dataSet files");
 
     //Checking file integrity and getting headers
     size_t magicNumber = ReadBigInt32(imageFile);
     size_t magicNumberLabel = ReadBigInt32(labelFile);
     if (magicNumber != 2051 || magicNumberLabel != 2049)
-        throw std::runtime_error("Invalid magic number in data files");
+        throw std::runtime_error("ReadFiles: Invalid magic number in data files");
 
 
     //Getting information about the datset files 
@@ -41,7 +40,7 @@ void ReadFiles(DataSet* dataSet, string imagesFilePath, string labelsFilePath, s
     
     numberOfImages = numberOfImages * proportion / 100;
 
-    // width and height of the images (28x228)
+    // width and height of the images (28x28)
     size_t width = ReadBigInt32(imageFile);
     size_t height = ReadBigInt32(imageFile);
 
@@ -51,7 +50,7 @@ void ReadFiles(DataSet* dataSet, string imagesFilePath, string labelsFilePath, s
     size_t iDataPointOffset;
     size_t iBatchOffset;
 
-    // batchSize = 0 correspond to a signle batch of the size of the dataset (used in the test dataset)  
+    // batchSize = 0 correspond to a sginle batch of the size of the dataset (used in the test dataset)  
     if (batchSize == 0){
         batchSize = numberOfImages;
         nbrBatch = 1;
@@ -104,19 +103,20 @@ void ReadFiles(DataSet* dataSet, string imagesFilePath, string labelsFilePath, s
 }
 
 void LoadDataSets(DataSet* trainDataSet, DataSet* testDataSet, size_t batchSize, char mnist, char const& modMnist){
+    filesystem::path path = filesystem::current_path();
     string trainImages = "train-images.idx3-ubyte";
     string trainLabels = "train-labels.idx1-ubyte";
     string testImages = "t10k-images.idx3-ubyte";
     string testLabels = "t10k-labels.idx1-ubyte";
 
     if (mnist){
-        string mnistDir = "./data/mnist/";
+        string mnistDir = path.string() + "/src/data/mnist/";
         ReadFiles(trainDataSet, mnistDir+trainImages, mnistDir+trainLabels, batchSize, mnist);
         ReadFiles(testDataSet, mnistDir+testImages, mnistDir+testLabels, 0, mnist);
     }
 
     if (modMnist){
-        string modMnistdir = "./data/modifiedMnist/";
+        string modMnistdir = path.string() + "/src/data/modifiedMnist/";
         ReadFiles(trainDataSet, modMnistdir+trainImages, modMnistdir+trainLabels, batchSize, modMnist);
         ReadFiles(testDataSet, modMnistdir+testImages, modMnistdir+testLabels, 0, modMnist);
     }
