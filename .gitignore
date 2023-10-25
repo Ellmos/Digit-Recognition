@@ -4,4 +4,5 @@
 *.d
 main
 
+data/mnist/*
 data/modifiedMnist/*
